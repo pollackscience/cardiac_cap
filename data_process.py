@@ -1,3 +1,5 @@
+import os
+import pickle as pkl
 import pandas as pd
 import xarray as xr
 import SimpleITK as sitk
@@ -79,13 +81,11 @@ class DicomToXArray:
                 too_close_slice = np.isclose(self.slice_dict[SA],
                                              self.slice_dict[SA_test], atol=0.5)
                 if too_close or too_close_slice:
-                    print(SA, SA_test)
-                    print(self.loc_dict[SA], self.loc_dict[SA_test])
                     if self.weirdness_dict[SA] > self.weirdness_dict[SA_test]:
                         self.bad_SAs.add(SA)
                     else:
                         self.bad_SAs.add(SA_test)
-        print(self.bad_SAs)
+        print('bad slices:', self.bad_SAs)
         self.good_SAs = self.bad_SAs.symmetric_difference(self.SAs)
 
     def get_ideal_params(self):
@@ -165,13 +165,51 @@ class DicomToXArray:
         return mask
 
     def make_xarray(self):
-        print(np.asarray(self.image_list).shape)
 
+        xs = np.arange(self.ideal_x_origin,
+                       self.ideal_x_origin + (self.ideal_x_spacing * self.ideal_x_shape),
+                       self.ideal_x_spacing)
+        ys = np.arange(self.ideal_y_origin,
+                       self.ideal_y_origin + (self.ideal_y_spacing * self.ideal_y_shape),
+                       self.ideal_y_spacing)
         zs = [self.loc_dict[SA][-1] for SA in self.good_SAs]
-        self.xrds = xr.Dataset({'image': (['z', 't', 'y', 'x'], self.image_list),
-                                'mask': (['z', 't', 'y', 'x'], self.mask_list)},
-                               coords={'t': self.timestamp_dict[list(self.good_SAs)[0]],
-                                       'x': range(self.ideal_x_shape),
-                                       'y': range(self.ideal_y_shape),
-                                       'z': zs})
-        self.xrds = self.xrds.sortby(['t', 'z'])
+        self.ds = xr.Dataset({'image': (['z', 't', 'y', 'x'], self.image_list),
+                              'mask': (['z', 't', 'y', 'x'], self.mask_list)},
+                             coords={'t': self.timestamp_dict[list(self.good_SAs)[0]],
+                                     'x': xs,
+                                     'y': ys,
+                                     'z': zs})
+        self.ds = self.ds.sortby(['t', 'z'])
+
+    def generate_3D_nifti(self, t_slice=0):
+        "Write out a nifti images of the 3D volume and 3d mask for a particular time slice."
+
+        xr_3D_slice = self.ds.isel(t=t_slice)
+
+        # sitk must get numpy array by [z,y,x]
+        nifti_image = sitk.GetImageFromArray(xr_3D_slice.image.transpose('z', 'y', 'x'))
+        nifti_mask = sitk.GetImageFromArray(xr_3D_slice.mask.transpose('z', 'y', 'x'))
+        self.set_sitk_metadata(nifti_image)
+        self.set_sitk_metadata(nifti_mask)
+        sitk.WriteImage(nifti_image, os.path.join(self.dir, f'CT_tslice_{t_slice}.nii'))
+        sitk.WriteImage(nifti_mask, os.path.join(self.dir, f'mask_tslice_{t_slice}.nii'))
+
+    def set_sitk_metadata(self, image):
+        image.SetOrigin((self.ds.x.values[0], self.ds.y.values[0], self.ds.z.values[0]))
+        image.SetDirection(self.ideal_directions)
+        # Cheating a bit with z-spacing....
+        print((self.ideal_x_spacing, self.ideal_y_spacing, np.mean(np.diff(self.ds.z.values))))
+        image.SetSpacing((self.ideal_x_spacing, self.ideal_y_spacing, np.mean(self.ds.z.values)))
+
+    def load(self):
+        f = open(os.path.join(self.dir, 'dcm_xr.pkl'), 'rb')
+        tmp_dict = pkl.load(f)
+        f.close()
+
+        self.__dict__.clear()
+        self.__dict__.update(tmp_dict)
+
+    def save(self):
+        f = open(os.path.join(self.dir, 'dcm_xr.pkl'), 'wb')
+        pkl.dump(self.__dict__, f, 2)
+        f.close()
