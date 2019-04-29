@@ -131,8 +131,6 @@ class DicomToXArray:
                                 int(image.GetSize()[-1])), 2)
         ref_image.SetSpacing((self.ideal_x_spacing, self.ideal_y_spacing, 1))
         ref_image.SetOrigin((self.ideal_x_origin, self.ideal_y_origin, image.GetOrigin()[-1]))
-        # ref_image.SetOrigin(image.GetOrigin())
-        # ref_image.SetDirection(image.GetDirection())
         ref_image.SetDirection(self.ideal_directions)
         ref_image = sitk.Cast(ref_image, image.GetPixelIDValue())
         center = sitk.CenteredTransformInitializer(
@@ -198,7 +196,6 @@ class DicomToXArray:
         image.SetOrigin((self.ds.x.values[0], self.ds.y.values[0], self.ds.z.values[0]))
         image.SetDirection(self.ideal_directions)
         # Cheating a bit with z-spacing....
-        print((self.ideal_x_spacing, self.ideal_y_spacing, np.mean(np.diff(self.ds.z.values))))
         image.SetSpacing((self.ideal_x_spacing, self.ideal_y_spacing, np.mean(self.ds.z.values)))
 
     def load(self):

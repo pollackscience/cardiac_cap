@@ -9,10 +9,9 @@ import SimpleITK as sitk
 import skimage as skim
 from skimage import feature, morphology
 import glob
-from tqdm import tqdm
 
 
-class MRELiverMask:
+class RegHearts:
     '''Class that generates liver masks for MRE input images'''
 
     def __init__(self, fixed_subj, moving_subj, tslice=0, verbose=False):
@@ -25,10 +24,10 @@ class MRELiverMask:
         self.load_niftis()
 
     def load_niftis(self):
-        fixed_ct_name = os.path.join(self.fixed_subj, f'CT_tslice_{self.t_slice}.nii')
-        fixed_mask_name = os.path.join(self.fixed_subj, f'mask_tslice_{self.t_slice}.nii')
-        moving_ct_name = os.path.join(self.moving_subj, f'CT_tslice_{self.t_slice}.nii')
-        moving_mask_name = os.path.join(self.moving_subj, f'mask_tslice_{self.t_slice}.nii')
+        fixed_ct_name = os.path.join(self.fixed_subj, f'CT_tslice_{self.tslice}.nii')
+        fixed_mask_name = os.path.join(self.fixed_subj, f'mask_tslice_{self.tslice}.nii')
+        moving_ct_name = os.path.join(self.moving_subj, f'CT_tslice_{self.tslice}.nii')
+        moving_mask_name = os.path.join(self.moving_subj, f'mask_tslice_{self.tslice}.nii')
 
         self.fixed_ct = self.get_sitk_image(fixed_ct_name)
         self.fixed_mask = self.get_sitk_image(fixed_mask_name)
