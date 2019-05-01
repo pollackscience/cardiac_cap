@@ -196,7 +196,8 @@ class DicomToXArray:
         image.SetOrigin((self.ds.x.values[0], self.ds.y.values[0], self.ds.z.values[0]))
         image.SetDirection(self.ideal_directions)
         # Cheating a bit with z-spacing....
-        image.SetSpacing((self.ideal_x_spacing, self.ideal_y_spacing, np.mean(self.ds.z.values)))
+        image.SetSpacing((self.ideal_x_spacing, self.ideal_y_spacing,
+                          np.mean(np.diff(self.ds.z.values))))
 
     def load(self):
         f = open(os.path.join(self.dir, 'dcm_xr.pkl'), 'rb')
