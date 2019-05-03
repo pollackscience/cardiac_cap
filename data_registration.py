@@ -33,6 +33,10 @@ class RegHearts:
         self.fixed_mask = self.get_sitk_image(fixed_mask_name)
         self.moving_ct = self.get_sitk_image(moving_ct_name)
         self.moving_mask = self.get_sitk_image(moving_mask_name)
+        self.recenter_img_z(self.fixed_ct)
+        self.recenter_img_z(self.fixed_mask)
+        self.recenter_img_z(self.moving_ct)
+        self.recenter_img_z(self.moving_mask)
 
     def get_sitk_image(self, nifti_name):
         reader = sitk.ImageFileReader()
